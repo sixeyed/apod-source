@@ -1,0 +1,147 @@
+name: Release tagged version
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  access-log:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Registry login
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          
+      - name: Docker - image metadata
+        id: docker_meta
+        uses: crazy-max/ghaction-docker-meta@v1
+        with:
+          images: sixeyed/access-log
+
+      - name: Docker - setup buildx
+        uses: docker/setup-buildx-action@v1
+        
+      - name: Docker - setup layer cache
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build and push Access Log
+        uses: docker/build-push-action@v2
+        with:
+          context: ./src/access-log
+          file: ./src/access-log/Dockerfile
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+          push: true
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
+
+  image-gallery:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Registry login
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          
+      - name: Docker - image metadata
+        id: docker_meta
+        uses: crazy-max/ghaction-docker-meta@v1
+        with:
+          images: sixeyed/image-gallery
+
+      - name: Docker - setup buildx
+        uses: docker/setup-buildx-action@v1
+        
+      - name: Docker - setup layer cache
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build and push Image Gallery
+        uses: docker/build-push-action@v2
+        with:
+          context: ./src/image-gallery
+          file: ./src/image-gallery/Dockerfile
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+          push: true
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
+
+  image-of-the-day:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Registry login
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          
+      - name: Docker - image metadata
+        id: docker_meta
+        uses: crazy-max/ghaction-docker-meta@v1
+        with:
+          images: sixeyed/image-of-the-day
+
+      - name: Docker - setup buildx
+        uses: docker/setup-buildx-action@v1
+        
+      - name: Docker - setup layer cache
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build and push Image of the Day
+        uses: docker/build-push-action@v2
+        with:
+          context: ./src/image-of-the-day
+          file: ./src/image-of-the-day/Dockerfile
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+          push: true
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
+
+  trigger-app-version-update:  
+    needs: [access-log, image-gallery, image-of-the-day]
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set image tag
+      id: vars
+      run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+
+    - name: Dispatch version update workflow
+      uses: benc-uk/workflow-dispatch@v1
+      with:
+        workflow: Update version tags
+        inputs: "{'tag':'${{ steps.vars.outputs.tag }}'}"
+        repo: sixeyed/apod-app        
+        token: ${{ secrets.ACCESS_TOKEN }}
