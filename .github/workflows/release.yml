@@ -142,6 +142,6 @@ jobs:
       uses: benc-uk/workflow-dispatch@v1
       with:
         workflow: Update version tags
-        inputs: "{'tag':'${{ steps.vars.outputs.tag }}'}"
+        inputs: format('{{"tag" : "{0}"}}', steps.vars.outputs.tag)
         repo: sixeyed/apod-app        
         token: ${{ secrets.ACCESS_TOKEN }}
